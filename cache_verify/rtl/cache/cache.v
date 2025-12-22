@@ -85,7 +85,9 @@ assign hit_write = cache_hit && req_op;
 
 // 替换选择：使用LRU
 wire replace_way;  // 0: 替换way0, 1: 替换way1
-assign replace_way = lru[req_index];
+// lru位记录最近使用的路：0表示way0最近使用，1表示way1最近使用
+// 需要替换的路应当是“非最近使用”的那一路
+assign replace_way = ~lru[req_index];
 
 // Refill计数器
 reg [1:0] refill_cnt;
@@ -330,15 +332,15 @@ always @(posedge clk_g) begin
         // 初始化已在initial块中完成
     end else if (state == LOOKUP && cache_hit) begin
         if (hit_way0) begin
-            lru[req_index] <= 1'b1;  // Way0被使用，下次替换Way1
+            lru[req_index] <= 1'b0;  // 记录Way0是最近使用
         end else if (hit_way1) begin
-            lru[req_index] <= 1'b0;  // Way1被使用，下次替换Way0
+            lru[req_index] <= 1'b1;  // 记录Way1是最近使用
         end
     end else if (state == REFILL && ret_valid && ret_last) begin
         if (replace_way == 1'b0) begin
-            lru[req_index] <= 1'b1;  // Way0被填充，下次替换Way1
+            lru[req_index] <= 1'b0;  // Way0刚被使用/填充
         end else begin
-            lru[req_index] <= 1'b0;  // Way1被填充，下次替换Way0
+            lru[req_index] <= 1'b1;  // Way1刚被使用/填充
         end
     end
 end
