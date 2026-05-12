@@ -1,0 +1,107 @@
+性能分析脚本执行记录
+==========
+运行命令：/opt/miniconda3/bin/python scripts/run_profile.py
+退出码：0
+
+结果摘要：
+- 暴力算法平均耗时：0.000005 秒。
+- 单调队列平均耗时：0.000006 秒。
+- 单调队列相对暴力算法的加速比为 0.81 倍。
+
+原始标准输出：
+滑动窗口最大值性能分析报告
+分析环境：Python cProfile + time.perf_counter
+
+=== 小规模正确性实验 ===
+数据规模 n = 20，窗口大小 k = 4，重复次数 = 10
+暴力算法总耗时：0.000048 秒
+暴力算法平均耗时：0.000005 秒
+单调队列总耗时：0.000059 秒
+单调队列平均耗时：0.000006 秒
+加速比：0.81 倍
+
+--- cProfile：暴力算法 ---
+1101 次函数调用，耗时 0.000 秒
+
+   排序依据：累计时间
+   统计项已从 11 项缩减为 10 项，原因是限制为 <10>
+
+   调用次数  本体耗时  单次耗时  累计耗时  单次累计  文件:行号(函数)
+       10    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:70(solve)
+       10    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:16(validate_window_input)
+       10    0.000    0.000    0.000    0.000 {内建方法 builtins.any}
+      210    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:49(<genexpr>)
+      210    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:10(_is_supported_integer)
+      440    0.000    0.000    0.000    0.000 {内建方法 builtins.isinstance}
+      170    0.000    0.000    0.000    0.000 {内建方法 builtins.max}
+        1    0.000    0.000    0.000    0.000 {_lsprof.Profiler 对象的 disable 方法}
+       10    0.000    0.000    0.000    0.000 <冻结模块 abc>:117(__instancecheck__)
+       20    0.000    0.000    0.000    0.000 {内建方法 builtins.len}
+
+--- cProfile：单调队列算法 ---
+1471 次函数调用，耗时 0.000 秒
+
+   排序依据：累计时间
+   统计项已从 14 项缩减为 10 项，原因是限制为 <10>
+
+   调用次数  本体耗时  单次耗时  累计耗时  单次累计  文件:行号(函数)
+       10    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:83(solve)
+       10    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:16(validate_window_input)
+       10    0.000    0.000    0.000    0.000 {内建方法 builtins.any}
+      210    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:49(<genexpr>)
+      210    0.000    0.000    0.000    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:10(_is_supported_integer)
+      440    0.000    0.000    0.000    0.000 {内建方法 builtins.isinstance}
+      200    0.000    0.000    0.000    0.000 {collections.deque 对象的 append 方法}
+      170    0.000    0.000    0.000    0.000 {list 对象的 append 方法}
+      140    0.000    0.000    0.000    0.000 {collections.deque 对象的 pop 方法}
+        1    0.000    0.000    0.000    0.000 {_lsprof.Profiler 对象的 disable 方法}
+
+=== 大规模性能对比实验 ===
+数据规模 n = 12000，窗口大小 k = 128，重复次数 = 10
+暴力算法总耗时：0.138087 秒
+暴力算法平均耗时：0.013809 秒
+单调队列总耗时：0.032842 秒
+单调队列平均耗时：0.003284 秒
+加速比：4.20 倍
+
+--- cProfile：暴力算法 ---
+598861 次函数调用，耗时 0.208 秒
+
+   排序依据：累计时间
+   统计项已从 11 项缩减为 10 项，原因是限制为 <10>
+
+   调用次数  本体耗时  单次耗时  累计耗时  单次累计  文件:行号(函数)
+       10    0.038    0.004    0.208    0.021 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:70(solve)
+   118730    0.113    0.000    0.113    0.000 {内建方法 builtins.max}
+       10    0.000    0.000    0.057    0.006 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:16(validate_window_input)
+       10    0.009    0.001    0.057    0.006 {内建方法 builtins.any}
+   120010    0.016    0.000    0.048    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:49(<genexpr>)
+   120010    0.020    0.000    0.032    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:10(_is_supported_integer)
+   240040    0.012    0.000    0.012    0.000 {内建方法 builtins.isinstance}
+        1    0.000    0.000    0.000    0.000 {_lsprof.Profiler 对象的 disable 方法}
+       10    0.000    0.000    0.000    0.000 <冻结模块 abc>:117(__instancecheck__)
+       10    0.000    0.000    0.000    0.000 {内建方法 _abc._abc_instancecheck}
+
+--- cProfile：单调队列算法 ---
+838781 次函数调用，耗时 0.133 秒
+
+   排序依据：累计时间
+   统计项已从 14 项缩减为 10 项，原因是限制为 <10>
+
+   调用次数  本体耗时  单次耗时  累计耗时  单次累计  文件:行号(函数)
+       10    0.052    0.005    0.133    0.013 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:83(solve)
+       10    0.000    0.000    0.056    0.006 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:16(validate_window_input)
+       10    0.009    0.001    0.056    0.006 {内建方法 builtins.any}
+   120010    0.016    0.000    0.047    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:49(<genexpr>)
+   120010    0.020    0.000    0.032    0.000 /Users/czx/Desktop/大三 下/软件工程/2310984 蔡子轩 第四次个人作业/sliding_window_project/src/sliding_window.py:10(_is_supported_integer)
+   240040    0.012    0.000    0.012    0.000 {内建方法 builtins.isinstance}
+   118730    0.009    0.000    0.009    0.000 {list 对象的 append 方法}
+   120000    0.009    0.000    0.009    0.000 {collections.deque 对象的 append 方法}
+   119030    0.007    0.000    0.007    0.000 {collections.deque 对象的 pop 方法}
+      900    0.000    0.000    0.000    0.000 {collections.deque 对象的 popleft 方法}
+
+结论：
+单调队列算法通过维护 O(k) 的候选集合，避免了对每个完整窗口进行重复扫描，因此在大规模数据集上能够稳定优于暴力算法。
+
+原始标准错误：
+（无）

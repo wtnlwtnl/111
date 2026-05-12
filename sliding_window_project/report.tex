@@ -1,0 +1,290 @@
+\documentclass[UTF8,a4paper,12pt]{ctexart}
+
+\usepackage[a4paper,margin=2.3cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    frame=single,
+    breaklines=true,
+    columns=fullflexible
+}
+
+\title{软件工程第四次个人作业报告\\滑动窗口最大值实现}
+\author{2310984\quad 蔡子轩}
+\date{2026年5月11日}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{实验任务与问题分析}
+\subsection{实验任务}
+本次实验要求实现滑动窗口最大值算法，并从软件工程角度完成代码规范检查、性能分析、单元测试与覆盖率统计。实验目标不是只写出一个可运行的函数，而是构建一个可维护、可测试、可分析、可扩展的小型 Python 项目。
+
+\subsection{问题定义}
+给定整数序列 \texttt{nums} 和窗口大小 \texttt{k}，窗口从左向右每次移动一位，需要输出每个窗口中的最大值。例如输入
+\texttt{[1, 3, -1, -3, 5, 3, 6, 7]} 与 \texttt{k = 3} 时，结果为
+\texttt{[3, 3, 5, 5, 6, 7]}。
+
+\subsection{总体思路}
+根据课程中关于高质量代码的要求，本实验采用“算法实现 + 工程化支撑”的方案完成作业。项目中同时保留暴力算法和单调队列算法：前者作为正确性参考与性能对照版本，后者作为最终推荐实现。围绕这两个算法，进一步补充输入校验、\texttt{Pylint}、\texttt{cProfile}、\texttt{unittest} 和 \texttt{coverage}，并将结果写入 \texttt{reports/} 目录，为报告分析提供直接证据。
+
+\section{算法设计与实现}
+\subsection{暴力算法设计}
+暴力算法在每个窗口上直接调用 \texttt{max()} 计算最大值。若数组长度为 \(n\)，窗口大小为 \(k\)，则共有 \(n-k+1\) 个窗口，每个窗口求最大值的代价为 \(O(k)\)，总时间复杂度为 \(O(nk)\)，额外空间复杂度为 \(O(1)\)（不计输出结果）。
+
+本实验将该算法实现为 \texttt{BruteForceWindowMaxSolver}，保存在
+\texttt{src/sliding\_window.py} 中。保留该版本的原因不是为了最终效率，而是为了作为优化前的基线和单元测试的正确性参考。
+
+\subsection{单调队列优化算法设计}
+优化算法使用双端队列保存“可能成为当前窗口最大值”的元素下标，并保持这些下标对应的值单调递减。窗口右移时，算法先删除已经离开窗口左边界的下标，再从队尾移除所有小于等于当前值的下标，最后将当前下标入队。此时队首下标对应的元素就是当前窗口最大值。
+
+该算法中，每个元素最多入队一次、出队一次，因此时间复杂度为 \(O(n)\)，额外空间复杂度为 \(O(k)\)。本实验将其实现为 \texttt{MonotonicQueueWindowMaxSolver}，作为默认求解策略。
+
+\subsection{统一接口设计}
+对外接口函数为 \texttt{max\_sliding\_window(nums, k, solver=None)}。当 \texttt{solver} 为空时，函数默认使用单调队列版本；如果传入其他求解器，则直接调用其 \texttt{solve(nums, k)} 方法。这种设计将调用方与具体算法解耦，便于后续扩展。
+
+\subsection{复杂度分析}
+\begin{table}[h]
+    \centering
+    \begin{tabular}{>{\raggedright\arraybackslash}p{4.5cm}cc}
+        \toprule
+        算法 & 时间复杂度 & 空间复杂度 \\
+        \midrule
+        暴力算法 \texttt{BruteForceWindowMaxSolver} & \(O(nk)\) & \(O(1)\) \\
+        单调队列算法 \texttt{MonotonicQueueWindowMaxSolver} & \(O(n)\) & \(O(k)\) \\
+        \bottomrule
+    \end{tabular}
+    \caption{两种算法复杂度对比}
+\end{table}
+
+\section{程序结构与可扩展性设计}
+\subsection{项目目录结构}
+项目目录如下：
+
+\begin{verbatim}
+sliding_window_project/
+├── src/
+│   ├── __init__.py
+│   └── sliding_window.py
+├── tests/
+│   ├── __init__.py
+│   └── test_sliding_window.py
+├── scripts/
+│   ├── run_demo.py
+│   ├── run_profile.py
+│   └── generate_reports.py
+├── reports/
+├── requirements.txt
+├── pyproject.toml
+├── README.md
+└── report.tex
+\end{verbatim}
+
+\subsection{模块化设计}
+\texttt{src/sliding\_window.py} 负责输入校验与算法实现；\texttt{tests/test\_sliding\_window.py} 负责单元测试；\texttt{scripts/run\_profile.py} 负责性能分析；\texttt{scripts/generate\_reports.py} 负责一键生成实验结果。这样的模块拆分符合课程中“将大程序按功能拆分成小模块”的思想，有助于降低复杂度并提高可维护性。
+
+\subsection{单一职责原则 SRP}
+本实验对 SRP 的体现如下：
+\begin{itemize}
+    \item \texttt{validate\_window\_input} 只负责参数校验；
+    \item \texttt{BruteForceWindowMaxSolver} 只负责暴力算法；
+    \item \texttt{MonotonicQueueWindowMaxSolver} 只负责单调队列算法；
+    \item \texttt{run\_profile.py} 只负责性能分析；
+    \item \texttt{test\_sliding\_window.py} 只负责正确性和异常处理测试。
+\end{itemize}
+
+\subsection{开放封闭原则 OCP}
+本实验通过统一的 \texttt{solve(nums, k)} 接口实现对扩展开放、对修改关闭。若后续要增加堆优化算法、分块算法、滑动窗口最小值算法，只需要新增求解器类并实现同名方法，不需要修改已有调用逻辑。这一点主要体现在 \texttt{BaseWindowMaxSolver} 抽象接口与 \texttt{max\_sliding\_window} 的设计中。
+
+\section{编程规范与 Pylint 代码分析}
+\subsection{参考规范}
+本实验主要参考 Python 的 PEP 8 编码风格，并结合课程 PPT 中关于命名、注释、缩进和导入顺序的要求进行实现。具体做法包括：
+\begin{itemize}
+    \item 使用 4 个空格缩进；
+    \item 函数和变量使用 \texttt{snake\_case}；
+    \item 类名使用 \texttt{PascalCase}；
+    \item 为模块、类和函数补充有意义的文档字符串；
+    \item 控制代码行长度不超过 100 个字符；
+    \item 不使用裸 \texttt{except}，通过显式异常类型处理非法输入。
+\end{itemize}
+
+\subsection{Pylint 检查方法}
+为保证依赖一致性，本实验在项目本地虚拟环境 \texttt{.venv} 中运行检查。执行命令如下：
+
+\begin{lstlisting}[language=bash]
+.venv/bin/python -m pylint src tests scripts
+\end{lstlisting}
+
+\texttt{pyproject.toml} 中将 \texttt{max-line-length} 设为 100，仅关闭了
+\texttt{too-few-public-methods} 这一项，因为策略类本身就只暴露一个求解接口。另外，为了适配当前实验环境，将 \texttt{jobs} 设置为 1，避免并行检查时触发系统权限问题。
+
+\subsection{Pylint 检查结果}
+最终 \texttt{reports/pylint\_report.txt} 中给出的结论如下：
+\begin{quote}
+Pylint 评分为 10.00/10。
+\end{quote}
+说明项目在命名、文档字符串、结构划分和格式规范方面均达到了较好的静态检查结果。
+
+\subsection{规范问题修改说明}
+实验过程中，\texttt{Pylint} 曾报告过以下工程性问题：
+\begin{itemize}
+    \item 测试类公共方法较多；
+    \item 报告生成脚本存在过长语句；
+    \item 性能分析脚本参数和局部变量稍多；
+    \item 并行模式下的 \texttt{Pylint} 在当前环境中触发权限异常。
+\end{itemize}
+针对这些问题，我分别通过局部规则说明、拆分函数、减少参数数量以及单进程检查完成了修正，最终消除了警告。
+
+\section{错误与异常处理}
+\subsection{考虑的异常情况}
+本实验重点考虑了以下错误输入：
+\begin{itemize}
+    \item \texttt{nums} 不是序列类型；
+    \item \texttt{nums} 为空；
+    \item \texttt{k} 不是整数；
+    \item \texttt{k \textless= 0}；
+    \item \texttt{k \textgreater len(nums)}；
+    \item \texttt{nums} 中存在非整数元素；
+    \item 传入的 \texttt{solver} 对象不具备可调用的 \texttt{solve} 方法。
+\end{itemize}
+
+\subsection{处理方式}
+上述异常统一在入口附近进行检查，而不是等到算法运行中途再暴露错误。具体策略是：
+\begin{itemize}
+    \item 类型错误抛出 \texttt{TypeError}；
+    \item 范围错误抛出 \texttt{ValueError}。
+\end{itemize}
+这种处理方式可以让错误定位更直接，符合防御式编程思想。
+
+\subsection{异常测试结果}
+异常输入均由 \texttt{tests/test\_sliding\_window.py} 覆盖。例如空数组、\texttt{k=0}、\texttt{k<0}、\texttt{k>len(nums)}、非整数 \texttt{k}、非整数元素和非法 \texttt{solver} 都已通过 \texttt{assertRaises} 进行验证，测试结果全部通过。
+
+\section{性能分析与优化}
+\subsection{性能分析方法}
+性能分析脚本为 \texttt{scripts/run\_profile.py}。该脚本使用固定随机种子生成数据，通过 \texttt{time.perf\_counter} 统计运行时间，并使用 \texttt{cProfile} 输出 \texttt{ncalls}、\texttt{tottime}、\texttt{percall} 和 \texttt{cumtime} 等指标。执行命令如下：
+
+\begin{lstlisting}[language=bash]
+.venv/bin/python scripts/run_profile.py
+\end{lstlisting}
+
+\subsection{优化前后结果对比}
+\begin{table}[h]
+    \centering
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm}cccc}
+        \toprule
+        数据集 & 算法 & 总时间/s & 平均时间/s & 备注 \\
+        \midrule
+        小规模：\(n=20\), \(k=4\), repeat=10 & 暴力算法 & 0.000069 & 0.000007 & 基本一致性对照 \\
+        小规模：\(n=20\), \(k=4\), repeat=10 & 单调队列 & 0.000070 & 0.000007 & 加速比 0.99x \\
+        大规模：\(n=12000\), \(k=128\), repeat=10 & 暴力算法 & 0.135023 & 0.013502 & 作为优化前基线 \\
+        大规模：\(n=12000\), \(k=128\), repeat=10 & 单调队列 & 0.034523 & 0.003452 & 加速比 3.91x \\
+        \bottomrule
+    \end{tabularx}
+    \caption{性能测试结果}
+\end{table}
+
+\subsection{瓶颈分析}
+从 \texttt{reports/profile\_report.txt} 可以看到，在大规模数据集上，暴力算法共调用了
+\texttt{builtins.max} 118730 次，该函数的 \texttt{cumtime} 和 \texttt{tottime} 都非常突出；对应的 \texttt{solve} 函数累计时间达到 0.197 秒。这说明主要瓶颈确实来自“每个窗口都重新扫描一次”的重复计算。
+
+相比之下，单调队列算法不再频繁调用 \texttt{max()}，其主要耗时分布在双端队列的 \texttt{append}、\texttt{pop} 和 \texttt{popleft} 操作上。虽然在 \texttt{repeat=10} 的条件下，两种算法都能看到 \texttt{validate\_window\_input} 的共享开销，但这部分开销并不会改变两种算法在渐进复杂度上的差异。
+
+\subsection{优化分析}
+优化的核心不是局部语句微调，而是改变数据结构与算法复杂度：
+\begin{itemize}
+    \item 暴力算法复杂度为 \(O(nk)\)；
+    \item 单调队列算法复杂度为 \(O(n)\)；
+    \item 在相同大规模测试条件下，优化后平均运行时间从 0.013502 秒降至 0.003452 秒。
+\end{itemize}
+因此可以得出结论：本实验的性能提升主要来自算法级优化，符合课程中“先找瓶颈，再优先优化算法和数据结构”的要求。
+
+\section{单元测试}
+\subsection{测试设计思路}
+单元测试采用 \texttt{unittest.TestCase} 编写，并将测试重点划分为三类：
+\begin{itemize}
+    \item 正常功能测试：验证常规输入是否得到正确结果；
+    \item 边界测试：验证 \texttt{k=1}、\texttt{k=len(nums)}、单元素数组等边界情况；
+    \item 异常测试：验证非法输入能否抛出预期异常。
+\end{itemize}
+
+\subsection{测试用例表}
+\begin{longtable}{>{\raggedright\arraybackslash}p{3cm}>{\raggedright\arraybackslash}p{5.5cm}>{\raggedright\arraybackslash}p{4.5cm}}
+    \toprule
+    测试类别 & 输入示例 & 预期结果或目的 \\
+    \midrule
+    题目样例 & \texttt{[1,3,-1,-3,5,3,6,7]}, \texttt{k=3} & 输出 \texttt{[3,3,5,5,6,7]} \\
+    最小窗口 & \texttt{[4,2,5]}, \texttt{k=1} & 输出原序列 \\
+    最大窗口 & \texttt{[4,2,5]}, \texttt{k=3} & 输出单个最大值 \\
+    递增数组 & \texttt{[1,2,3,4]}, \texttt{k=2} & 验证队尾弹出逻辑 \\
+    递减数组 & \texttt{[4,3,2,1]}, \texttt{k=2} & 验证队首保持逻辑 \\
+    重复元素 & \texttt{[2,2,2]}, \texttt{k=2} & 验证相等元素处理 \\
+    负数数组 & \texttt{[-4,-2,-5]}, \texttt{k=2} & 验证负数参与比较 \\
+    单元素数组 & \texttt{[9]}, \texttt{k=1} & 验证最小合法输入 \\
+    空数组异常 & \texttt{[]}, \texttt{k=1} & 应抛出 \texttt{ValueError} \\
+    非法窗口异常 & \texttt{k=0}、\texttt{k<0}、\texttt{k>len(nums)} & 应抛出 \texttt{ValueError} \\
+    类型异常 & 非整数 \texttt{k}、非整数元素、非序列输入 & 应抛出 \texttt{TypeError} \\
+    一致性测试 & 多组输入同时比较两种算法 & 验证优化前后结果一致 \\
+    \bottomrule
+\end{longtable}
+
+\subsection{测试覆盖率与通过率}
+测试命令如下：
+
+\begin{lstlisting}[language=bash]
+.venv/bin/python -m unittest discover -s tests
+.venv/bin/python -m coverage run -m unittest discover -s tests
+.venv/bin/python -m coverage report -m
+\end{lstlisting}
+
+本实验共运行 20 个测试用例，全部通过，测试通过率为 100\%。覆盖率结果如下：
+\begin{quote}
+src/\_\_init\_\_.py：100\% \\
+src/sliding\_window.py：100\% \\
+总计：100\%
+\end{quote}
+说明核心功能路径与异常路径都已被测试覆盖。
+
+\subsection{缺陷报告}
+在最终版本中，\texttt{unittest} 和 \texttt{coverage} 未发现剩余功能缺陷。开发过程中的主要问题是 \texttt{Pylint} 在当前环境中采用并行进程时触发权限异常，这一问题已通过将 \texttt{jobs} 配置为 1 解决，不影响算法功能正确性。
+
+\section{作业问题总结回答}
+\subsection{a. 是否遵守编程规范}
+是。项目参考了 PEP 8 和课程 PPT 中关于命名、导入顺序、文档字符串、缩进和异常处理的要求，并使用 \texttt{Pylint} 进行自动检查。最终评分为 10.00/10。
+
+\subsection{b. 是否考虑算法可扩展性}
+是。项目同时实现了暴力算法和单调队列算法，并通过统一的 \texttt{solver} 接口组织调用。未来可以继续增加堆优化算法、分块算法或滑动窗口最小值算法，而不需要改动对外 API。
+
+\subsection{c. 是否遵守 SRP 和 OCP}
+是。输入校验、算法实现、性能分析与单元测试分别位于不同模块中，体现了 SRP；\texttt{max\_sliding\_window} 通过统一接口支持新算法接入，体现了 OCP。
+
+\subsection{d. 考虑了哪些错误与异常处理}
+项目考虑了空输入、非法窗口大小、非整数输入、非序列输入和非法 \texttt{solver} 等情况，并分别抛出 \texttt{TypeError} 或 \texttt{ValueError}。这些异常均由单元测试验证。
+
+\subsection{e. 算法复杂度、性能分析与优化}
+暴力算法时间复杂度为 \(O(nk)\)，单调队列算法时间复杂度为 \(O(n)\)。本实验使用 \texttt{time.perf\_counter} 和 \texttt{cProfile} 进行性能分析。在 \(n=12000\)、\(k=128\)、重复 10 次的条件下，单调队列版本平均耗时 0.003452 秒，相比暴力算法的 0.013502 秒获得了约 3.91 倍加速。优化效果主要来源于算法与数据结构的改进。
+
+\subsection{f. 单元测试结果}
+本实验共设计并运行 20 个测试用例，覆盖正常输入、边界输入和异常输入三大类场景。测试通过率为 100\%，语句覆盖率为 100\%，说明核心逻辑已得到较充分验证。
+
+\section{实验总结}
+本次实验将“滑动窗口最大值”从一道算法题扩展为一个完整的软件工程小项目。通过同时实现基线算法与优化算法、补充输入校验、静态检查、性能分析、单元测试和覆盖率统计，程序不仅能够得到正确结果，还具备了较好的可读性、可维护性、可测试性和可分析性。
+
+从实验结果看，暴力算法适合作为正确性参考版本，而单调队列算法在大规模数据下表现出明显优势。最终项目的 \texttt{Pylint} 评分达到 10.00/10，\texttt{unittest} 20 项测试全部通过，\texttt{coverage} 达到 100\%，说明本实验已经从“能运行的算法实现”提升为“可维护、可测试、可分析的软件实现”。
+
+\end{document}

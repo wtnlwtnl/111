@@ -1,0 +1,25 @@
+[project]
+name = "sliding-window-project"
+version = "0.1.0"
+description = "Software engineering assignment for sliding window maximum."
+requires-python = ">=3.10"
+
+[tool.pylint.main]
+py-version = "3.10"
+jobs = 1
+ignore = ["reports"]
+persistent = false
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.pylint.messages_control]
+# 这些轻量策略类本来就只暴露一个公共方法。
+disable = ["too-few-public-methods"]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
