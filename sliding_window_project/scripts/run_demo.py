@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.sliding_window import (  # pylint: disable=wrong-import-position
     BruteForceWindowMaxSolver,
+    MonotonicQueueBaselineWindowMaxSolver,
     MonotonicQueueWindowMaxSolver,
     max_sliding_window,
 )
@@ -27,6 +28,11 @@ def main() -> None:
         window_size,
         solver=BruteForceWindowMaxSolver(),
     )
+    baseline_result = max_sliding_window(
+        nums,
+        window_size,
+        solver=MonotonicQueueBaselineWindowMaxSolver(),
+    )
     monotonic_result = max_sliding_window(
         nums,
         window_size,
@@ -36,9 +42,10 @@ def main() -> None:
     print("输入序列：", nums)
     print("窗口大小：", window_size)
     print("暴力算法结果：", brute_force_result)
+    print("基础单调队列结果：", baseline_result)
     print("单调队列结果：", monotonic_result)
     print("默认接口结果：", max_sliding_window(nums, window_size))
-    print("两种算法结果是否一致：", brute_force_result == monotonic_result)
+    print("三种算法结果是否一致：", brute_force_result == baseline_result == monotonic_result)
 
 
 if __name__ == "__main__":
