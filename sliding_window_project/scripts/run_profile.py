@@ -8,6 +8,7 @@ import pstats
 import random
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,10 +18,29 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.sliding_window import (  # pylint: disable=wrong-import-position
     BaseWindowMaxSolver,
     BruteForceWindowMaxSolver,
+    MonotonicQueueBaselineWindowMaxSolver,
     MonotonicQueueWindowMaxSolver,
 )
 
 REPORT_PATH = PROJECT_ROOT / "reports" / "profile_report.txt"
+
+
+@dataclass
+class SolverMeasurement:
+    """记录单个求解器的一次测量结果。"""
+
+    result: list[int]
+    elapsed: float
+    profile_text: str
+
+
+@dataclass
+class ExperimentMeasurements:
+    """记录一次实验中三个求解器的测量结果。"""
+
+    brute_force: SolverMeasurement
+    baseline: SolverMeasurement
+    optimized: SolverMeasurement
 
 
 def build_dataset(size: int, seed: int) -> list[int]:
@@ -130,12 +150,33 @@ def measure_solver(
     nums: list[int],
     k: int,
     repeat: int,
-) -> tuple[list[int], float, str]:
+) -> SolverMeasurement:
     """返回单个求解器的结果、耗时和 cProfile 文本。"""
 
     result, elapsed = benchmark_solver(solver, nums, k, repeat)
     _, profile_text = collect_profile_stats(solver, nums, k, repeat)
-    return result, elapsed, profile_text
+    return SolverMeasurement(result=result, elapsed=elapsed, profile_text=profile_text)
+
+
+def collect_experiment_measurements(
+    nums: list[int],
+    k: int,
+    repeat: int,
+) -> ExperimentMeasurements:
+    """收集一次实验中的三组求解器结果。"""
+
+    brute_force = measure_solver(BruteForceWindowMaxSolver(), nums, k, repeat)
+    baseline = measure_solver(MonotonicQueueBaselineWindowMaxSolver(), nums, k, repeat)
+    optimized = measure_solver(MonotonicQueueWindowMaxSolver(), nums, k, repeat)
+
+    if not brute_force.result == baseline.result == optimized.result:
+        raise AssertionError("性能分析过程中，三种求解器的输出结果不一致。")
+
+    return ExperimentMeasurements(
+        brute_force=brute_force,
+        baseline=baseline,
+        optimized=optimized,
+    )
 
 
 def format_experiment(
@@ -146,39 +187,38 @@ def format_experiment(
 ) -> str:
     """运行一次实验，并格式化耗时与性能分析结果。"""
 
-    brute_force_result, brute_force_elapsed, brute_force_profile = measure_solver(
-        BruteForceWindowMaxSolver(),
-        nums,
-        k,
-        repeat,
-    )
-    monotonic_result, monotonic_elapsed, monotonic_profile = measure_solver(
-        MonotonicQueueWindowMaxSolver(),
-        nums,
-        k,
-        repeat,
-    )
-    if brute_force_result != monotonic_result:
-        raise AssertionError("性能分析过程中，两种求解器的输出结果不一致。")
-
-    brute_force_average = brute_force_elapsed / repeat
-    monotonic_average = monotonic_elapsed / repeat
-    speedup_ratio = brute_force_elapsed / monotonic_elapsed
+    measurements = collect_experiment_measurements(nums, k, repeat)
 
     lines = [
         f"=== {label} ===",
         f"数据规模 n = {len(nums)}，窗口大小 k = {k}，重复次数 = {repeat}",
-        f"暴力算法总耗时：{brute_force_elapsed:.6f} 秒",
-        f"暴力算法平均耗时：{brute_force_average:.6f} 秒",
-        f"单调队列总耗时：{monotonic_elapsed:.6f} 秒",
-        f"单调队列平均耗时：{monotonic_average:.6f} 秒",
-        f"加速比：{speedup_ratio:.2f} 倍",
+        f"暴力算法总耗时：{measurements.brute_force.elapsed:.6f} 秒",
+        f"暴力算法平均耗时：{measurements.brute_force.elapsed / repeat:.6f} 秒",
+        f"基础单调队列总耗时：{measurements.baseline.elapsed:.6f} 秒",
+        f"基础单调队列平均耗时：{measurements.baseline.elapsed / repeat:.6f} 秒",
+        f"单调队列总耗时：{measurements.optimized.elapsed:.6f} 秒",
+        f"单调队列平均耗时：{measurements.optimized.elapsed / repeat:.6f} 秒",
+        (
+            "基础单调队列相对暴力算法的加速比："
+            f"{measurements.brute_force.elapsed / measurements.baseline.elapsed:.2f} 倍"
+        ),
+        (
+            "小幅优化后单调队列相对暴力算法的加速比："
+            f"{measurements.brute_force.elapsed / measurements.optimized.elapsed:.2f} 倍"
+        ),
+        (
+            "小幅优化后单调队列相对基础单调队列的加速比："
+            f"{measurements.baseline.elapsed / measurements.optimized.elapsed:.2f} 倍"
+        ),
         "",
         "--- cProfile：暴力算法 ---",
-        brute_force_profile.strip(),
+        measurements.brute_force.profile_text.strip(),
+        "",
+        "--- cProfile：基础单调队列算法 ---",
+        measurements.baseline.profile_text.strip(),
         "",
         "--- cProfile：单调队列算法 ---",
-        monotonic_profile.strip(),
+        measurements.optimized.profile_text.strip(),
         "",
     ]
     return "\n".join(lines)
@@ -210,8 +250,9 @@ def main() -> None:
         ),
         "结论：",
         (
-            "单调队列算法通过维护 O(k) 的候选集合，避免了对每个完整窗口进行重复扫描，"
-            "因此在大规模数据集上能够稳定优于暴力算法。"
+            "基础单调队列版本通过避免对每个窗口重复扫描，已经显著优于暴力算法；"
+            "优化版本进一步通过更直接的输入校验和少量循环常数优化，"
+            "在不改变 O(n) 复杂度的前提下获得了小幅提升。"
         ),
     ]
     report_content = "\n".join(report_sections) + "\n"
